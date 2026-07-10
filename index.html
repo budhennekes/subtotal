@@ -288,6 +288,14 @@ const FREE_LIMIT = 5;
 const POPULAR_IDS = ["netflix","spotify","amazon-prime","disney-plus","hulu","hbo-max","youtube-premium","apple-tv-plus","paramount-plus","peacock","apple-music","icloud-plus","chatgpt-plus","amazon-music-unlimited","audible","kindle-unlimited","xbox-game-pass","playstation-plus","nintendo-switch-online","planet-fitness","dashpass","uber-one","instacart-plus","hellofresh","youtube-tv","siriusxm","new-york-times","crunchyroll","discord-nitro","the-athletic"];
 
 const SERVICES = (window.SUBTOTAL_SERVICES||[]).map(s=>({...s, category: CATS[s.category]?s.category:"other"}));
+const OB_STEPS=[
+  {title:"Streaming & TV", sub:"The easy ones first. Tap everything you pay for.", ids:["netflix","amazon-prime-video","disney-plus","hulu","hbo-max","youtube-premium","peacock","paramount-plus"]},
+  {title:"Music & audio", sub:"Including the one playing in your car.", ids:["spotify","apple-music","audible","siriusxm","amazon-music-unlimited","pandora"]},
+  {title:"Phone, internet & cloud", sub:"Bills are subscriptions too. These are the ones people forget.", ids:["verizon","att","tmobile","xfinity-internet","icloud-plus","google-one","dropbox"]},
+  {title:"Apps & AI", sub:"The quiet ten-and-twenty-dollar ones that add up.", ids:["chatgpt-plus","claude-pro","microsoft-365","adobe-creative-cloud","canva-pro","onepassword","youtube-tv"]},
+  {title:"Everything else", sub:"Gym? Meal kits? Search for anything we missed.", ids:["planet-fitness","dashpass","uber-one","amazon-prime","costco","hellofresh","new-york-times"], search:true},
+];
+const OB_REVEAL=OB_STEPS.length+1;
 const $=sel=>document.querySelector(sel);
 const store={
   get subs(){try{return JSON.parse(localStorage.getItem("st_subs")||"[]")}catch(e){return[]}},
@@ -696,7 +704,7 @@ function betaUnlock(){store.flags={...store.flags,pro:true};closeModal();render(
 /* ================= ONBOARDING ================= */
 function renderOnboarding(app){
   const step=state.obStep;
-  const dots=`<div class="step-dots">${[0,1,2].map(i=>`<i class="${i<=step?"on":""}"></i>`).join("")}</div>`;
+  const dots=`<div class="step-dots">${Array.from({length:OB_REVEAL+1},(_,i)=>`<i class="${i<=step?"on":""}"></i>`).join("")}</div>`;
   if(step===0){
     app.innerHTML=`<div class="ob">${dots}
       <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:14px"><em style="font-style:normal">sub</em>total · the simple subscription tracker</div>
@@ -711,17 +719,18 @@ function renderOnboarding(app){
     </div>`;
     return;
   }
-  if(step===1){
+  if(step>=1&&step<=OB_STEPS.length){
+    const cfg=OB_STEPS[step-1];
     app.innerHTML=`<div class="ob" style="text-align:center;padding-bottom:180px">
       <button class="ob-back" onclick="obBack()" title="Back">←</button>${dots}
-      <h1 style="font-size:clamp(26px,5vw,36px)">Which of these do you have?</h1>
-      <p class="lede" style="margin-top:8px">Tap everything you pay for. Don't overthink prices. You can fix them later.</p>
-      <input class="ob-search" id="ob-q" placeholder="Search anything: Netflix, gym, car insurance…" autocomplete="off" value="${escAttr(state.obQuery||"")}" oninput="obSearch(this.value)">
+      <h1 style="font-size:clamp(26px,5vw,36px)">${cfg.title}</h1>
+      <p class="lede" style="margin-top:8px">${cfg.sub}</p>
+      ${cfg.search?`<input class="ob-search" id="ob-q" placeholder="Search anything: gym, car insurance, HOA…" autocomplete="off" value="${escAttr(state.obQuery||"")}" oninput="obSearch(this.value)">`:""}
       <div class="pick-grid" id="ob-grid">${obGridHTML()}</div>
       <div class="ob-footer">
         <div class="running" id="ob-running"></div>
-        <button class="btn primary" id="ob-cta" onclick="obFinishPicks()"></button>
-        <button class="skip" onclick="finishOnboarding()">I'll add mine manually</button>
+        <button class="btn primary" id="ob-cta" onclick="obNext()"></button>
+        <button class="skip" onclick="finishOnboarding()">Skip the rest, take me to the app</button>
       </div>
     </div>`;
     obFooter();
@@ -747,20 +756,26 @@ function renderOnboarding(app){
     </div>
   </div>`;
 }
-function obNext(){state.obStep++;render()}
-function obBack(){state.obStep=Math.max(0,state.obStep-1);render()}
+function obNext(){
+  state.obQuery="";
+  if(state.obStep===OB_STEPS.length && !Object.keys(state.obPicked).length){finishOnboarding();return}
+  state.obStep++; render(); window.scrollTo(0,0);
+}
+function obBack(){state.obQuery="";state.obStep=Math.max(0,state.obStep-1);render();window.scrollTo(0,0)}
 function obPool(){
+  const cfg=OB_STEPS[state.obStep-1]; if(!cfg)return[];
   const q=(state.obQuery||"").trim().toLowerCase();
-  if(!q){ const popular=POPULAR_IDS.map(id=>SERVICES.find(s=>s.id===id)).filter(Boolean).slice(0,24); return popular.length>=12?popular:SERVICES.slice(0,24); }
-  return SERVICES.filter(s=> s.name.toLowerCase().includes(q) || (s.aliases||[]).some(a=>a.includes(q)) || (CATS[s.category]?.label.toLowerCase().includes(q)) ).slice(0,18);
+  if(cfg.search&&q) return SERVICES.filter(s=> s.name.toLowerCase().includes(q) || (s.aliases||[]).some(a=>a.includes(q)) || (CATS[s.category]?.label.toLowerCase().includes(q)) ).slice(0,18);
+  return cfg.ids.map(id=>SERVICES.find(s=>s.id===id)).filter(Boolean);
 }
 function obGridHTML(){
+  const cfg=OB_STEPS[state.obStep-1]||{};
   const q=(state.obQuery||"").trim();
-  const customs=Object.entries(state.obPicked).filter(([k])=>k.startsWith("custom:")).map(([k,p])=>
-    `<div class="pick on custom" onclick="obRemoveCustom('${escAttr(k)}')" title="Tap to remove"><span class="tick">✓</span><div class="logo"><span style="color:var(--green)">${esc((p.name||"?")[0].toUpperCase())}</span></div><span class="pname">${esc(p.name)}</span><input class="pin money" type="number" step="0.01" min="0" inputmode="decimal" placeholder="$/mo" value="${p.price||""}" oninput="obSetCustomPrice('${escAttr(k)}',this.value)" onclick="event.stopPropagation()"></div>`).join("");
+  const customs= cfg.search? Object.entries(state.obPicked).filter(([k])=>k.startsWith("custom:")).map(([k,p])=>
+    `<div class="pick on custom" onclick="obRemoveCustom('${escAttr(k)}')" title="Tap to remove"><span class="tick">✓</span><div class="logo"><span style="color:var(--green)">${esc((p.name||"?")[0].toUpperCase())}</span></div><span class="pname">${esc(p.name)}</span><input class="pin money" type="number" step="0.01" min="0" inputmode="decimal" placeholder="$/mo" value="${p.price||""}" oninput="obSetCustomPrice('${escAttr(k)}',this.value)" onclick="event.stopPropagation()"></div>`).join("") : "";
   const tiles=obPool().map(s=>{const on=!!state.obPicked[s.id];const p=s.plans[s.defaultPlan||0];
     return `<button class="pick ${on?"on":""}" onclick="obToggle('${s.id}')"><span class="tick">✓</span>${logoHTML(s)}<span class="pname">${esc(s.name)}</span><span class="pprice">${p.price?money(p.price,p.price>=10?0:undefined)+"/"+(p.cycle==="yearly"?"yr":"mo"):"varies"}</span></button>`}).join("");
-  const addTile= q? `<button class="pick" onclick="obAddCustom()"><div class="logo"><span style="color:var(--green)">＋</span></div><span class="pname">Add "${esc(q)}"</span><span class="pprice">anything recurring</span></button>` : "";
+  const addTile= cfg.search&&q? `<button class="pick" onclick="obAddCustom()"><div class="logo"><span style="color:var(--green)">＋</span></div><span class="pname">Add "${esc(q)}"</span><span class="pprice">anything recurring</span></button>` : "";
   return customs+tiles+addTile;
 }
 function obRefresh(){ const g=$("#ob-grid"); if(g)g.innerHTML=obGridHTML(); obFooter(); }
@@ -769,7 +784,8 @@ function obFooter(){
   const total=Object.values(state.obPicked).reduce((a,p)=>a+monthly(p),0);
   const r=$("#ob-running"), b=$("#ob-cta"); if(!r||!b)return;
   r.innerHTML= n? `So far: <b class="money">${money(total)}</b>/month` : "Tap what you pay for ↑";
-  b.disabled=!n; b.style.opacity=n?"":".4"; b.textContent= n? "Show me my total" : "Pick at least one";
+  const last=state.obStep===OB_STEPS.length;
+  b.textContent= last? (n?"Show me my total":"Take me to the app") : "Next →";
 }
 function obSearch(v){ state.obQuery=v; const g=$("#ob-grid"); if(g)g.innerHTML=obGridHTML(); }
 function obAddCustom(){
@@ -785,7 +801,6 @@ function obAddCustom(){
 function obRemoveCustom(k){ delete state.obPicked[k]; obRefresh(); }
 function obSetCustomPrice(k,v){ if(state.obPicked[k]){ state.obPicked[k].price=parseFloat(v)||0; obFooter(); } }
 function obToggle(id){ const s=SERVICES.find(x=>x.id===id); if(state.obPicked[id]){delete state.obPicked[id]} else { const p=s.plans[s.defaultPlan||0]; state.obPicked[id]={...p, name:s.name, serviceId:s.id, price:p.price||0, cycle:p.cycle} } obRefresh() }
-function obFinishPicks(){state.obStep=2;render()}
 function finishOnboarding(){
   const subs=store.subs;
   Object.entries(state.obPicked).forEach(([id,p])=>{
