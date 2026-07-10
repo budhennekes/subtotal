@@ -482,8 +482,8 @@ function insightsHTML(){
     out.push(`<div class="insight"><div class="ic">🌱</div><div><b>The long view:</b> ${money(m,0)}/month invested instead could grow to about <b>${money(fv,0)}</b> over 30 years.<p class="fine">Assumes a 7% average annual return, a historical-average assumption, not a guarantee.</p></div></div>`)}
   // comparison
   const y=m*12;
-  if(y>200){const comp= y>2000?`about a decent used-car payment, every month`: y>1000?`${Math.round(y/450)} round-trip domestic flights a year`:`${Math.round(y/6.5)} lattes a year`;
-    out.push(`<div class="insight"><div class="ic">☕️</div><div>Your ${money(y,0)}/year in subscriptions is ${comp}.</div></div>`)}
+  if(y>200){const c= y>2000?{e:"🚗",t:`about a decent used-car payment, every month`}: y>1000?{e:"✈️",t:`${Math.round(y/450)} round-trip flights`}:{e:"☕️",t:`${Math.round(y/6.5)} lattes`};
+    out.push(`<div class="insight"><div class="ic">${c.e}</div><div>Your ${money(y,0)} a year in subscriptions buys ${c.t}.</div></div>`)}
   return out.length?`<div class="insights">${out.slice(0,2).join("")}</div>`:"";
 }
 
