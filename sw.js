@@ -1,6 +1,6 @@
 /* Subtotal service worker — offline-first cache of the app shell.
    Bump CACHE when index.html or data/services.js changes. */
-const CACHE = "subtotal-v6";
+const CACHE = "subtotal-v7";
 const ASSETS = [
   "./",
   "./index.html",

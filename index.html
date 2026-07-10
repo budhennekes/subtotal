@@ -295,7 +295,24 @@ const OB_STEPS=[
   {title:"Apps & AI", sub:"The quiet ten-and-twenty-dollar ones that add up.", ids:["chatgpt-plus","claude-pro","microsoft-365","adobe-creative-cloud","canva-pro","onepassword","youtube-tv"]},
   {title:"Everything else", sub:"Gym? Meal kits? Search for anything we missed.", ids:["planet-fitness","dashpass","uber-one","amazon-prime","costco","hellofresh","new-york-times"], search:true},
 ];
-const OB_REVEAL=OB_STEPS.length+1;
+const OB_REVEAL=OB_STEPS.length+2; // category steps + goal step + reveal
+const GOALS=[
+  {id:"vacation", e:"🏖️", label:"A real vacation", target:2500},
+  {id:"efund", e:"🛟", label:"An emergency fund", target:2500},
+  {id:"debt", e:"💳", label:"Paying off debt", target:null},
+  {id:"invest", e:"📈", label:"Investing it", target:null},
+  {id:"house", e:"🏡", label:"A down payment", target:20000},
+  {id:"treat", e:"🎯", label:"Something big I want", target:1000},
+];
+function currentGoal(){return GOALS.find(g=>g.id===store.flags.goal)||null}
+function goalLine(m){
+  const g=currentGoal(); if(!g||m<=0)return "";
+  const yr=m*12;
+  if(g.id==="invest"){const fv=m*((Math.pow(1+0.07/12,120)-1)/(0.07/12));return `📈 Redirected to investing, ${money(m,0)}/mo grows to about <b>${money(fv,0)}</b> in 10 years <span style="font-size:11px;color:var(--ink-3)">(7% historical avg., not a guarantee)</span>`}
+  if(g.id==="debt")return `💳 Redirected, that's <b>${money(yr,0)}</b> a year in extra debt payments`;
+  const months=Math.ceil(g.target/m);
+  return `${g.e} Redirect it all and ${g.label.toLowerCase()} (${money(g.target,0)}) is funded in <b>${months<=24?months+" months":(Math.round(months/12*10)/10)+" years"}</b>`;
+}
 const $=sel=>document.querySelector(sel);
 const store={
   get subs(){try{return JSON.parse(localStorage.getItem("st_subs")||"[]")}catch(e){return[]}},
@@ -443,14 +460,25 @@ function savedSince(s){ if(!s.stoppedAt)return 0; const months=Math.max(0,(today
 function insightsHTML(){
   const subs=activeSubs(); if(subs.length<2)return "";
   const out=[];
+  // goal progress from trimming
+  const g=currentGoal();
+  const savedTot=store.subs.filter(s=>s.status!=="active").reduce((a,s)=>a+savedSince(s),0);
+  if(savedTot>=5&&g&&g.target){
+    const pct=Math.min(100,Math.round(savedTot/g.target*100));
+    out.push(`<div class="insight"><div class="ic">${g.e}</div><div><b>${money(savedTot,0)} saved</b> since you started trimming. That's ${pct}% of ${g.label.toLowerCase()}.</div></div>`);
+  } else if(savedTot>=5){
+    out.push(`<div class="insight"><div class="ic">🌱</div><div><b>${money(savedTot,0)} saved</b> since you started trimming. It adds up fast.</div></div>`);
+  }
   // duplicates
   const overlapCats=["streaming","music","software","ai","fitness","news"];
   overlapCats.forEach(c=>{const g=subs.filter(s=>s.category===c); if(g.length>=3||(g.length===2&&(c==="music"))){
     const tot=g.reduce((a,s)=>a+monthly(s),0);
     out.push(`<div class="insight dup"><div class="ic">👀</div><div><b>${g.length} ${CATS[c].label.toLowerCase()} subscriptions</b>: ${g.map(s=>esc(s.name)).join(", ")} add up to ${money(tot)}/mo. Overlap worth trimming?</div></div>`)}});
-  // opportunity cost
+  // opportunity cost (goal-aware)
   const m=totalMonthly();
-  if(m>=20){const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
+  const gl=goalLine(m);
+  if(m>=20&&gl){ out.push(`<div class="insight"><div class="ic">${(currentGoal()||{}).e||"🌱"}</div><div>${gl.replace(/^\S+\s/,"")}</div></div>`)}
+  else if(m>=20){const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
     out.push(`<div class="insight"><div class="ic">🌱</div><div><b>The long view:</b> ${money(m,0)}/month invested instead could grow to about <b>${money(fv,0)}</b> over 30 years.<p class="fine">Assumes a 7% average annual return, a historical-average assumption, not a guarantee.</p></div></div>`)}
   // comparison
   const y=m*12;
@@ -593,6 +621,7 @@ function openDetail(uid){
       ${s.status==="active"?`
       <div class="cancel-box">
         <h4>Want out?</h4>
+        <div style="font-size:14px;color:var(--green);font-weight:600;margin-bottom:10px">✂️ Cancelling frees ${money(monthly(s)*12,0)} a year${currentGoal()?` toward ${currentGoal().label.toLowerCase()}`:""}</div>
         ${svc?.cancelSteps?.length?`<ol>${svc.cancelSteps.map(st=>`<li>${esc(st)}</li>`).join("")}</ol>`:`<div style="font-size:14px;color:var(--ink-2)">Check the service's account or billing settings. Cancellation is almost always under "Manage subscription."</div>`}
         ${svc?.cancelUrl?`<a href="${svc.cancelUrl}" target="_blank" rel="noopener">Open ${esc(s.name)}'s cancel page ↗</a>`:""}
       </div>
@@ -625,6 +654,11 @@ function openSettings(){
     <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad">
       <h2>Settings & backup</h2>
       <p style="font-size:14px;color:var(--ink-2);margin:10px 0 18px">Everything lives on this device. Export a backup so you can restore or move browsers. Takes two seconds.</p>
+      <div class="f-group"><label class="f-label">I'd rather spend this money on</label>
+        <select class="f-select" onchange="store.flags={...store.flags,goal:this.value||null};closeModal();render();toast(this.value?'Got it. Everything now measures against that':'Goal cleared')">
+          <option value="">No goal set</option>
+          ${GOALS.map(g=>`<option value="${g.id}" ${store.flags.goal===g.id?"selected":""}>${g.e} ${g.label}</option>`).join("")}
+        </select></div>
       <div class="btn-row" style="flex-direction:column">
         <button class="btn primary" onclick="exportJSON()">⬇︎ Download backup (${n} item${n===1?"":"s"})</button>
         <button class="btn ghost" onclick="$('#file-import').click()">⬆︎ Restore from backup</button>
@@ -736,19 +770,37 @@ function renderOnboarding(app){
     obFooter();
     return;
   }
-  // step 2: reveal
+  if(step===OB_STEPS.length+1){ // goal step
+    app.innerHTML=`<div class="ob">
+      <button class="ob-back" onclick="obBack()" title="Back">←</button>${dots}
+      <h1 style="font-size:clamp(26px,5vw,36px)">What would you rather do with this money?</h1>
+      <p class="lede" style="margin-top:8px">Pick one. Every subscription gets measured against it, so trimming actually feels like progress.</p>
+      <div class="pick-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:26px">
+        ${GOALS.map(g=>`<button class="pick ${store.flags.goal===g.id?"on":""}" onclick="pickGoal('${g.id}')" style="padding:18px 8px 16px"><span class="tick">✓</span><span style="font-size:28px">${g.e}</span><span class="pname" style="font-size:13px">${g.label}</span>${g.target?`<span class="pprice">${money(g.target,0)}</span>`:""}</button>`).join("")}
+      </div>
+      <div class="ob-cta" style="margin-top:26px">
+        <button class="skip" onclick="state.obStep++;render();window.scrollTo(0,0)">Skip, just show my total</button>
+      </div>
+    </div>`;
+    return;
+  }
+  // reveal
   const picked=Object.values(state.obPicked);
   const m=picked.reduce((a,p)=>a+monthly(p),0), y=m*12;
+  const priced=picked.filter(p=>(p.price||0)>0).sort((a,b)=>monthly(a)-monthly(b));
+  const trim=priced.find(p=>monthly(p)>=8)||priced[0];
+  const gl=goalLine(m);
   const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
   app.innerHTML=`<div class="ob">
-    <button class="ob-back" onclick="obBack()" title="Edit my picks">←</button>${dots}
+    <button class="ob-back" onclick="obBack()" title="Back">←</button>${dots}
     <p class="lede" style="margin:0">Your subscriptions cost about</p>
     <div class="reveal-num money">${money(m)}</div>
     <p class="reveal-sub">every month, or <b class="money" style="color:var(--ink)">${money(y,0)}</b> a year</p>
     <div class="reveal-compare">
+      ${trim?`<div>✂️ Cut just <b>${esc(trim.name)}</b> and that's <b>${money(monthly(trim)*12,0)} a year</b> back in your pocket</div>`:""}
+      ${gl?`<div>${gl}</div>`:`
       <div>☕️ That's <b>${Math.max(1,Math.round(y/6.5))} lattes</b> a year</div>
-      ${y>800?`<div>✈️ Or about <b>${Math.round(y/450)} round-trip flights</b></div>`:""}
-      <div>🌱 Invested instead, ~<b>${money(fv,0)}</b> after 30 years<span style="font-size:11px;color:var(--ink-3)"> (7% historical avg., not a guarantee)</span></div>
+      <div>🌱 Invested instead, ~<b>${money(fv,0)}</b> after 30 years<span style="font-size:11px;color:var(--ink-3)"> (7% historical avg., not a guarantee)</span></div>`}
     </div>
     <div class="ob-cta">
       <button class="btn primary" onclick="finishOnboarding()">Keep track of it all →</button>
@@ -762,6 +814,7 @@ function obNext(){
   state.obStep++; render(); window.scrollTo(0,0);
 }
 function obBack(){state.obQuery="";state.obStep=Math.max(0,state.obStep-1);render();window.scrollTo(0,0)}
+function pickGoal(id){store.flags={...store.flags,goal:id};state.obStep++;render();window.scrollTo(0,0)}
 function obPool(){
   const cfg=OB_STEPS[state.obStep-1]; if(!cfg)return[];
   const q=(state.obQuery||"").trim().toLowerCase();
