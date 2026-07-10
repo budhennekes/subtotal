@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Subtotal · What your subscriptions really cost</title>
+<meta name="description" content="A simple, beautiful subscription tracker. No bank login. 60 seconds to set up.">
+<meta name="theme-color" content="#FAF6EF">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png" sizes="32x32">
+<link rel="icon" href="icon-512.png" sizes="512x512">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAF6EF; --paper-2:#F3EDE1; --card:#FFFFFF; --ink:#1C1A16; --ink-2:#6E6759; --ink-3:#A29A8A;
+  --line:#E6DECF; --green:#0E6B4F; --green-soft:#E3EFE7; --red:#B4432F; --red-soft:#F7E6E1;
+  --amber:#B07C10; --amber-soft:#F6EDD8;
+  --r:18px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(28,26,22,.05),0 8px 24px -12px rgba(28,26,22,.14);
+  --shadow-lg:0 2px 4px rgba(28,26,22,.06),0 24px 60px -20px rgba(28,26,22,.28);
+  --sans:"Schibsted Grotesk",-apple-system,sans-serif; --serif:"Fraunces",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#171512; --paper-2:#201D18; --card:#232019; --ink:#F2EDE3; --ink-2:#A99F8D; --ink-3:#736B5C;
+    --line:#332F27; --green:#4CAE8C; --green-soft:#1E3229; --red:#E0765F; --red-soft:#3A241E;
+    --amber:#D9A83E; --amber-soft:#362C15;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 24px 60px -20px rgba(0,0,0,.7);
+  }
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100dvh;line-height:1.45;
+  background-image:radial-gradient(ellipse 80% 50% at 50% -10%,var(--paper-2),transparent)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.money{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+
+/* ---------- shell ---------- */
+#app{max-width:1060px;margin:0 auto;padding:0 20px 120px}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0 8px}
+.wordmark{font-family:var(--serif);font-weight:600;font-size:22px;letter-spacing:-.01em}
+.wordmark em{font-style:normal;color:var(--green)}
+.top-actions{display:flex;gap:8px}
+.icon-btn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--ink-2);border:1px solid var(--line);background:var(--card);transition:.15s}
+.icon-btn:hover{color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow)}
+
+/* ---------- hero total ---------- */
+.hero{padding:34px 0 10px;text-align:center}
+.hero .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.big-total{font-family:var(--serif);font-weight:500;font-size:clamp(56px,11vw,96px);letter-spacing:-.03em;line-height:1.05;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.big-total .cents{font-size:.45em;vertical-align:.62em;letter-spacing:0}
+.hero .sub{color:var(--ink-2);font-size:15px}
+.hero .sub b{color:var(--ink);font-weight:600}
+.cycle-toggle{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:3px;margin-top:14px}
+.cycle-toggle button{padding:6px 16px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);transition:.15s}
+.cycle-toggle button.on{background:var(--ink);color:var(--paper)}
+
+/* ---------- upcoming strip ---------- */
+.strip{display:flex;gap:10px;overflow-x:auto;padding:18px 2px 6px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip-card{flex:0 0 auto;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow);cursor:pointer;transition:.15s}
+.strip-card:hover{transform:translateY(-2px)}
+.strip-card .when{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.strip-card .when.today,.strip-card .when.soon{color:var(--red)}
+.strip-card .amt{font-weight:600}
+
+/* ---------- section headers / controls ---------- */
+.controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:26px 0 14px;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{padding:7px 14px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+select.sort{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:500;color:var(--ink-2)}
+
+/* ---------- cards grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.sub-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);cursor:pointer;position:relative;transition:transform .18s,box-shadow .18s;animation:rise .4s both}
+.sub-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+.sub-card .row1{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:12px;background:var(--paper-2);display:grid;place-items:center;font-weight:700;font-size:18px;overflow:hidden;flex-shrink:0;border:1px solid var(--line)}
+.logo img{width:30px;height:30px;object-fit:contain}
+.sub-card .name{font-weight:600;font-size:16px;letter-spacing:-.01em}
+.sub-card .plan{font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.sub-card .row2{display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px}
+.sub-card .price{font-family:var(--serif);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.sub-card .price small{font-family:var(--sans);font-size:12px;color:var(--ink-3);font-weight:500}
+.due{font-size:12px;font-weight:600;color:var(--ink-2);background:var(--paper-2);padding:4px 10px;border-radius:999px}
+.due.soon{color:var(--red);background:var(--red-soft)}
+.due.trial{color:var(--amber);background:var(--amber-soft)}
+.cat-dot{position:absolute;top:18px;right:16px;width:8px;height:8px;border-radius:50%}
+.sub-card.inactive{opacity:.55}
+.sub-card.inactive .price{text-decoration:line-through;text-decoration-thickness:1.5px}
+.saved-note{font-size:12px;font-weight:600;color:var(--green)}
+
+/* add card */
+.add-card{border:1.5px dashed var(--line);border-radius:var(--r);display:grid;place-items:center;min-height:132px;color:var(--ink-3);font-weight:600;font-size:14px;cursor:pointer;transition:.15s;background:transparent}
+.add-card:hover{color:var(--green);border-color:var(--green)}
+
+/* ---------- insight cards ---------- */
+.insights{display:grid;gap:12px;margin-top:26px}
+.insight{display:flex;gap:14px;align-items:flex-start;background:var(--green-soft);border:1px solid transparent;border-radius:var(--r);padding:16px 18px}
+.insight.dup{background:var(--amber-soft)}
+.insight .ic{font-size:20px;line-height:1.3}
+.insight b{font-weight:600}
+.insight p{font-size:14px;color:var(--ink-2);margin-top:2px}
+.insight .fine{font-size:11.5px;color:var(--ink-3);margin-top:6px}
+
+/* ---------- calendar ---------- */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 0 12px}
+.cal-head h3{font-family:var(--serif);font-weight:600;font-size:22px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .dow{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3);text-align:center;text-transform:uppercase;padding:6px 0}
+.cal .day{min-height:74px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;font-size:12px;position:relative}
+.cal .day.blank{background:transparent;border-color:transparent}
+.cal .day .n{color:var(--ink-3);font-weight:600}
+.cal .day.today{border-color:var(--green)}
+.cal .day.today .n{color:var(--green)}
+.cal .chip{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:10.5px;font-weight:600;background:var(--paper-2);border-radius:6px;padding:2px 5px;white-space:nowrap;overflow:hidden;cursor:pointer}
+.cal .chip img{width:11px;height:11px;border-radius:3px}
+.week-totals{margin-top:18px;display:grid;gap:8px}
+.week-row{display:flex;justify-content:space-between;font-size:14px;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.week-row b{font-variant-numeric:tabular-nums}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed;bottom:28px;right:max(24px,calc(50vw - 506px));width:58px;height:58px;border-radius:20px;background:var(--ink);color:var(--paper);font-size:26px;display:grid;place-items:center;box-shadow:var(--shadow-lg);transition:.18s;z-index:40}
+.fab:hover{transform:scale(1.06) rotate(90deg)}
+
+/* ---------- modal / sheet ---------- */
+.overlay{position:fixed;inset:0;background:rgba(20,17,12,.45);backdrop-filter:blur(3px);z-index:50;display:grid;place-items:center;padding:18px;animation:fade .18s}
+@keyframes fade{from{opacity:0}}
+.sheet{background:var(--paper);border-radius:24px;width:100%;max-width:520px;max-height:88dvh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.98)}}
+.sheet-pad{padding:26px}
+.sheet h2{font-family:var(--serif);font-weight:600;font-size:24px;letter-spacing:-.01em}
+.sheet .x{position:sticky;top:14px;float:right;margin:14px 14px 0 0;width:32px;height:32px;border-radius:10px;background:var(--paper-2);display:grid;place-items:center;color:var(--ink-2);z-index:2}
+
+/* search */
+.search-wrap{position:relative;margin:16px 0 12px}
+.search-wrap input{width:100%;padding:14px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);font-size:16px;outline:none;transition:.15s}
+.search-wrap input:focus{border-color:var(--green)}
+.results{display:grid;gap:6px}
+.result{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;transition:.12s;border:1px solid transparent;text-align:left;width:100%}
+.result:hover{background:var(--card);border-color:var(--line)}
+.result .rname{font-weight:600;font-size:15px}
+.result .rcat{font-size:12px;color:var(--ink-3)}
+.result .rprice{margin-left:auto;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* form */
+.f-group{margin-bottom:14px}
+.f-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;display:block}
+.f-input,.f-select{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font-size:15px;outline:none}
+.f-input:focus,.f-select:focus{border-color:var(--green)}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.plan-pick{display:grid;gap:8px;margin-bottom:14px}
+.plan-opt{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;background:var(--card);font-size:14px;text-align:left;width:100%}
+.plan-opt.on{border-color:var(--green);background:var(--green-soft)}
+.plan-opt b{font-variant-numeric:tabular-nums}
+.check-row{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:14.5px;color:var(--ink-2)}
+.check-row input{width:18px;height:18px;accent-color:var(--green)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 22px;border-radius:14px;font-weight:600;font-size:15px;transition:.15s;width:100%}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:var(--shadow-lg)}
+.btn.green{background:var(--green);color:#fff}
+.btn.ghost{background:var(--paper-2);color:var(--ink)}
+.btn.danger-ghost{background:none;color:var(--red);font-size:13.5px;padding:10px}
+.btn.sm{width:auto;padding:9px 14px;font-size:13px;border-radius:11px}
+.btn-row{display:flex;gap:10px;margin-top:8px}
+
+/* detail sheet extras */
+.detail-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.detail-head .logo{width:54px;height:54px;border-radius:14px}
+.detail-head .logo img{width:36px;height:36px}
+.cancel-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:16px}
+.cancel-box h4{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.cancel-box ol{padding-left:18px;font-size:14px;color:var(--ink-2);display:grid;gap:4px}
+.cancel-box a{color:var(--green);font-weight:600;font-size:14px;display:inline-block;margin-top:10px}
+
+/* ---------- onboarding ---------- */
+.ob{max-width:640px;margin:0 auto;padding:40px 22px 140px;text-align:center;animation:rise .5s both}
+.ob .step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:36px}
+.ob .step-dots i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.ob .step-dots i.on{background:var(--green)}
+.ob h1{font-family:var(--serif);font-weight:500;font-size:clamp(30px,6vw,44px);letter-spacing:-.02em;line-height:1.12}
+.ob h1 em{font-style:italic;color:var(--green)}
+.ob .lede{color:var(--ink-2);font-size:17px;margin:16px auto 0;max-width:440px}
+.ob .stat-cite{font-size:12px;color:var(--ink-3);margin-top:10px}
+.ob-cta{margin-top:34px;display:grid;gap:10px;justify-items:center}
+.ob-cta .btn{max-width:320px}
+.skip{font-size:13.5px;color:var(--ink-3);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:26px;text-align:center}
+.pick{border:1.5px solid var(--line);background:var(--card);border-radius:16px;padding:14px 6px 12px;cursor:pointer;display:grid;justify-items:center;gap:8px;transition:.12s;position:relative}
+.pick:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.pick.on{border-color:var(--green);background:var(--green-soft)}
+.pick .logo{width:40px;height:40px;border-radius:11px}
+.pick .logo img{width:26px;height:26px}
+.pick .pname{font-size:12px;font-weight:600;line-height:1.2}
+.pick .pprice{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.pick .tick{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;font-size:12px;display:grid;place-items:center;opacity:0;transform:scale(.5);transition:.15s}
+.pick.on .tick{opacity:1;transform:scale(1)}
+.ob-footer{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,var(--paper) 32%);padding:34px 22px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30}
+.ob-footer .running{font-size:14px;color:var(--ink-2)}
+.ob-footer .running b{font-family:var(--serif);font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums}
+.ob-footer .btn{max-width:340px}
+.reveal-num{font-family:var(--serif);font-weight:500;font-size:clamp(60px,13vw,110px);letter-spacing:-.03em;line-height:1;margin:26px 0 4px;font-variant-numeric:tabular-nums;animation:pop .5s cubic-bezier(.2,.9,.3,1.2) both}
+.reveal-sub{color:var(--ink-2);font-size:16px}
+.reveal-compare{margin:30px auto 0;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;text-align:left;font-size:14.5px;color:var(--ink-2);display:grid;gap:10px;box-shadow:var(--shadow)}
+.reveal-compare div b{color:var(--ink)}
+
+/* ---------- paywall ---------- */
+.pw-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:var(--green-soft);color:var(--green);border-radius:999px;padding:5px 12px;margin-bottom:14px}
+.pw-plans{display:grid;gap:10px;margin:20px 0 6px}
+.pw-plan{border:1.5px solid var(--line);border-radius:16px;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--card);text-align:left;width:100%}
+.pw-plan.on{border-color:var(--green);background:var(--green-soft)}
+.pw-plan .t{font-weight:700}
+.pw-plan .d{font-size:12.5px;color:var(--ink-2)}
+.pw-plan .p{font-family:var(--serif);font-size:22px;font-variant-numeric:tabular-nums}
+.pw-plan .p small{font-family:var(--sans);font-size:11px;color:var(--ink-3)}
+.pw-fine{font-size:12px;color:var(--ink-3);text-align:center;margin-top:12px}
+ul.pw-feats{list-style:none;display:grid;gap:8px;margin:16px 0;font-size:14.5px;color:var(--ink-2)}
+ul.pw-feats li::before{content:"✓";color:var(--green);font-weight:700;margin-right:9px}
+
+/* toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:80;animation:pop .25s;box-shadow:var(--shadow-lg);white-space:nowrap}
+
+/* empty state */
+.empty{text-align:center;padding:60px 20px;color:var(--ink-2)}
+.empty .eface{font-size:40px}
+.empty h3{font-family:var(--serif);font-size:24px;font-weight:500;margin:12px 0 6px;color:var(--ink)}
+
+footer.credit{margin-top:60px;text-align:center;font-size:12px;color:var(--ink-3);line-height:1.7}
+footer.credit b{color:var(--ink-2)}
+@media(max-width:560px){
+  .grid{grid-template-columns:1fr 1fr;gap:10px}
+  .sub-card{padding:14px}
+  .sub-card .price{font-size:20px}
+  .sub-card .plan{max-width:100px}
+  .cal .day{min-height:56px;padding:4px}
+  .cal .chip span{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="data/services.js"></script>
+<script>
+'use strict';
+/* ================= Subtotal ================= */
+const CATS = {
+  streaming:{label:"Streaming",color:"#C2543A"}, music:{label:"Music & Audio",color:"#7A4FBF"},
+  gaming:{label:"Gaming",color:"#3D74C6"}, news:{label:"News & Reading",color:"#8A6D3B"},
+  ai:{label:"AI Tools",color:"#0E6B4F"}, software:{label:"Apps & Software",color:"#4B6B8A"},
+  fitness:{label:"Health & Fitness",color:"#C77E2C"}, food:{label:"Food & Delivery",color:"#B4432F"},
+  cell:{label:"Phone & Internet",color:"#5B5B5B"}, shopping:{label:"Memberships",color:"#3E7C4F"},
+  finance:{label:"Money & Credit",color:"#2F6F6B"}, insurance:{label:"Insurance",color:"#6B5B7A"},
+  dating:{label:"Dating",color:"#C24A78"}, education:{label:"Learning",color:"#3B7A8A"},
+  other:{label:"Other",color:"#888070"}
+};
+const FREE_LIMIT = 5;
+const POPULAR_IDS = ["netflix","spotify","amazon-prime","disney-plus","hulu","hbo-max","youtube-premium","apple-tv-plus","paramount-plus","peacock","apple-music","icloud-plus","chatgpt-plus","amazon-music-unlimited","audible","kindle-unlimited","xbox-game-pass","playstation-plus","nintendo-switch-online","planet-fitness","dashpass","uber-one","instacart-plus","hellofresh","youtube-tv","siriusxm","new-york-times","crunchyroll","discord-nitro","the-athletic"];
+
+const SERVICES = (window.SUBTOTAL_SERVICES||[]).map(s=>({...s, category: CATS[s.category]?s.category:"other"}));
+const $=sel=>document.querySelector(sel);
+const store={
+  get subs(){try{return JSON.parse(localStorage.getItem("st_subs")||"[]")}catch(e){return[]}},
+  set subs(v){localStorage.setItem("st_subs",JSON.stringify(v))},
+  get flags(){try{return JSON.parse(localStorage.getItem("st_flags")||"{}")}catch(e){return{}}},
+  set flags(v){localStorage.setItem("st_flags",JSON.stringify(v))}
+};
+let state={view:"dash", cycle:"monthly", sort:"due", month:new Date().getMonth(), year:new Date().getFullYear(), obStep:0, obPicked:{}};
+
+/* ---------- date helpers ---------- */
+const DAY=86400000;
+const today=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
+function addCycle(d,cycle){const n=new Date(d); if(cycle==="yearly"){n.setFullYear(n.getFullYear()+1)} else if(cycle==="weekly"){n.setDate(n.getDate()+7)} else {n.setMonth(n.getMonth()+1)} return n}
+function nextRenewal(sub){ if(sub.status!=="active") return null; let d=new Date(sub.nextDate+"T00:00:00"); const t=today(); let guard=0; while(d<t && guard++<600){d=addCycle(d,sub.cycle)} return d }
+function daysUntil(d){return Math.round((d-today())/DAY)}
+function fmtDate(d){return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function monthly(sub){return sub.cycle==="yearly"?sub.price/12: sub.cycle==="weekly"?sub.price*52/12: sub.price}
+function money(n,dec){const opts={style:"currency",currency:"USD"}; if(dec===0){opts.maximumFractionDigits=0} return n.toLocaleString("en-US",opts)}
+
+/* ---------- persistence maintenance: roll renewals forward ---------- */
+function rollForward(){const subs=store.subs;let changed=false; subs.forEach(s=>{ if(s.status!=="active")return; const nr=nextRenewal(s); if(nr && iso(nr)!==s.nextDate){s.nextDate=iso(nr);changed=true} }); if(changed) store.subs=subs}
+
+/* ---------- logo ---------- */
+function logoHTML(sub,cls){
+  const cat=CATS[sub.category]||CATS.other;
+  const letter=`<span style="color:${cat.color}">${(sub.name||"?")[0].toUpperCase()}</span>`;
+  if(!sub.domain) return `<div class="logo ${cls||""}">${letter}</div>`;
+  return `<div class="logo ${cls||""}"><img loading="lazy" src="https://www.google.com/s2/favicons?domain=${sub.domain}&sz=128" alt="" onerror="this.parentNode.innerHTML='<span style=&quot;color:${cat.color}&quot;>${(sub.name||"?")[0].toUpperCase()}</span>'"></div>`;
+}
+
+/* ---------- totals ---------- */
+function activeSubs(){return store.subs.filter(s=>s.status==="active")}
+function totalMonthly(list){return (list||activeSubs()).reduce((a,s)=>a+monthly(s),0)}
+
+/* ---------- toast ---------- */
+let toastT;function toast(msg){document.querySelectorAll(".toast").forEach(e=>e.remove());const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2600)}
+
+/* ================= RENDER ROOT ================= */
+function render(){
+  rollForward();
+  const app=$("#app");
+  if(!store.flags.onboarded){renderOnboarding(app);return}
+  app.innerHTML=`
+  <header class="top">
+    <div class="wordmark">sub<em>total</em></div>
+    <div class="top-actions">
+      <button class="icon-btn" title="Calendar file" onclick="downloadICS()">📅</button>
+      <button class="icon-btn" title="Settings & backup" onclick="openSettings()">⚙︎</button>
+    </div>
+  </header>
+  ${heroHTML()}
+  ${upcomingStripHTML()}
+  <div class="controls">
+    <div class="seg">
+      <button class="${state.view==='dash'?'on':''}" onclick="setView('dash')">Cards</button>
+      <button class="${state.view==='cal'?'on':''}" onclick="setView('cal')">Calendar</button>
+    </div>
+    ${state.view==='dash'?`<select class="sort" onchange="state.sort=this.value;render()">
+      <option value="due" ${state.sort==='due'?'selected':''}>Sort: next due</option>
+      <option value="price" ${state.sort==='price'?'selected':''}>Sort: price</option>
+      <option value="cat" ${state.sort==='cat'?'selected':''}>Sort: category</option>
+      <option value="name" ${state.sort==='name'?'selected':''}>Sort: name</option>
+    </select>`:''}
+  </div>
+  <div id="view">${state.view==='dash'?dashHTML():calHTML()}</div>
+  ${state.view==='dash'?insightsHTML():''}
+  <footer class="credit">Your data lives on this device. No bank login, no account, no tracking.<br><b>Subtotal</b>. See what your subscriptions really cost.</footer>
+  <button class="fab" title="Add subscription" onclick="openAdd()">+</button>
+  <div id="modal"></div>`;
+}
+function setView(v){state.view=v;render()}
+
+function heroHTML(){
+  const m=totalMonthly(); const yearly= state.cycle==="monthly"? m*12 : m*12;
+  const n=activeSubs().length;
+  const shown= state.cycle==="monthly"? m : m*12;
+  const [whole,cents]=shown.toFixed(2).split(".");
+  return `<section class="hero">
+    <div class="eyebrow">${n} active subscription${n===1?"":"s"}</div>
+    <div class="big-total money">$${(+whole).toLocaleString()}<span class="cents">.${cents}</span></div>
+    <div class="sub">per ${state.cycle==="monthly"?"month":"year"} · that's <b>${money(state.cycle==="monthly"?m*12:m,0)}</b> a ${state.cycle==="monthly"?"year":"month"}</div>
+    <div class="cycle-toggle">
+      <button class="${state.cycle==='monthly'?'on':''}" onclick="state.cycle='monthly';render()">Monthly</button>
+      <button class="${state.cycle==='yearly'?'on':''}" onclick="state.cycle='yearly';render()">Yearly</button>
+    </div>
+  </section>`;
+}
+
+function upcomingStripHTML(){
+  const items=activeSubs().map(s=>({s,d:nextRenewal(s)})).filter(x=>x.d&&daysUntil(x.d)<=14).sort((a,b)=>a.d-b.d);
+  if(!items.length)return "";
+  const wk=items.filter(x=>daysUntil(x.d)<=7).reduce((a,x)=>a+x.s.price,0);
+  return `<div class="strip">
+    <div class="strip-card" style="cursor:default"><div><div class="when">Next 7 days</div><div class="amt money">${money(wk)}</div></div></div>
+    ${items.map(({s,d})=>{const du=daysUntil(d);const cls=du<=0?"today":du<=3?"soon":"";
+      const label=du<=0?"today":du===1?"tomorrow":`in ${du} days`;
+      return `<div class="strip-card" onclick="openDetail('${s.uid}')">${logoHTML(s)}<div><div class="when ${cls}">${s.trial?"TRIAL ENDS ":""}${label}</div><div class="amt money">${money(s.price)}</div></div></div>`}).join("")}
+  </div>`;
+}
+
+function dashHTML(){
+  const subs=[...store.subs];
+  if(!subs.length)return `<div class="empty"><div class="eface">🍃</div><h3>Nothing here yet</h3><p>Add your first subscription. It takes ten seconds.</p></div>`;
+  const sorters={due:(a,b)=>{const da=nextRenewal(a),db=nextRenewal(b); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return da-db},
+    price:(a,b)=>monthly(b)-monthly(a), cat:(a,b)=>(a.category||"").localeCompare(b.category||""), name:(a,b)=>a.name.localeCompare(b.name)};
+  subs.sort((a,b)=>{ if(a.status!==b.status) return a.status==="active"?-1:1; return sorters[state.sort](a,b)});
+  return `<div class="grid">${subs.map((s,i)=>cardHTML(s,i)).join("")}
+    <button class="add-card" onclick="openAdd()">+ Add subscription</button></div>`;
+}
+
+function cardHTML(s,i){
+  const cat=CATS[s.category]||CATS.other; const nr=nextRenewal(s);
+  let due="";
+  if(s.status!=="active"){
+    const saved=savedSince(s);
+    due=`<span class="saved-note">${s.status==="paused"?"Paused":"Cancelled"}${saved>0?` · saved ${money(saved,0)}`:""}</span>`;
+  } else if(s.trial){ const du=daysUntil(nr); due=`<span class="due trial">Trial · ${du<=0?"ends today":du+"d left"}</span>`;
+  } else if(nr){ const du=daysUntil(nr); due=`<span class="due ${du<=3?"soon":""}">${du<=0?"due today":du===1?"tomorrow":du<=7?`in ${du} days`:fmtDate(nr)}</span>`; }
+  return `<div class="sub-card ${s.status!=="active"?"inactive":""}" style="animation-delay:${Math.min(i*40,400)}ms" onclick="openDetail('${s.uid}')">
+    <span class="cat-dot" style="background:${cat.color}" title="${cat.label}"></span>
+    <div class="row1">${logoHTML(s)}<div><div class="name">${esc(s.name)}</div><div class="plan">${esc(s.planName||cat.label)}</div></div></div>
+    <div class="row2"><div class="price money">${money(s.price)}<small>/${s.cycle==="yearly"?"yr":s.cycle==="weekly"?"wk":"mo"}</small></div>${due}</div>
+  </div>`;
+}
+
+function savedSince(s){ if(!s.stoppedAt)return 0; const months=Math.max(0,(today()-new Date(s.stoppedAt+"T00:00:00"))/DAY/30.44); return months*monthly(s) }
+
+/* ---------- insights ---------- */
+function insightsHTML(){
+  const subs=activeSubs(); if(subs.length<2)return "";
+  const out=[];
+  // duplicates
+  const overlapCats=["streaming","music","software","ai","fitness","news"];
+  overlapCats.forEach(c=>{const g=subs.filter(s=>s.category===c); if(g.length>=3||(g.length===2&&(c==="music"))){
+    const tot=g.reduce((a,s)=>a+monthly(s),0);
+    out.push(`<div class="insight dup"><div class="ic">👀</div><div><b>${g.length} ${CATS[c].label.toLowerCase()} subscriptions</b>: ${g.map(s=>esc(s.name)).join(", ")} add up to ${money(tot)}/mo. Overlap worth trimming?</div></div>`)}});
+  // opportunity cost
+  const m=totalMonthly();
+  if(m>=20){const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
+    out.push(`<div class="insight"><div class="ic">🌱</div><div><b>The long view:</b> ${money(m,0)}/month invested instead could grow to about <b>${money(fv,0)}</b> over 30 years.<p class="fine">Assumes a 7% average annual return, a historical-average assumption, not a guarantee.</p></div></div>`)}
+  // comparison
+  const y=m*12;
+  if(y>200){const comp= y>2000?`about a decent used-car payment, every month`: y>1000?`${Math.round(y/450)} round-trip domestic flights a year`:`${Math.round(y/6.5)} lattes a year`;
+    out.push(`<div class="insight"><div class="ic">☕️</div><div>Your ${money(y,0)}/year in subscriptions is ${comp}.</div></div>`)}
+  return out.length?`<div class="insights">${out.join("")}</div>`:"";
+}
+
+/* ---------- calendar view ---------- */
+function calHTML(){
+  const y=state.year,mo=state.month;
+  const first=new Date(y,mo,1), startDow=first.getDay(), dim=new Date(y,mo+1,0).getDate();
+  const monthName=first.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+  // renewals in month
+  const events={};
+  activeSubs().forEach(s=>{ let d=nextRenewal(s); let guard=0; while(d && guard++<24){ if(d.getFullYear()===y&&d.getMonth()===mo){(events[d.getDate()]=events[d.getDate()]||[]).push(s)} if(d>new Date(y,mo+1,0))break; d=addCycle(d,s.cycle)}});
+  let cells=`${["S","M","T","W","T","F","S"].map(d=>`<div class="dow">${d}</div>`).join("")}`;
+  for(let i=0;i<startDow;i++)cells+=`<div class="day blank"></div>`;
+  const t=today();
+  for(let d=1;d<=dim;d++){
+    const isToday=t.getDate()===d&&t.getMonth()===mo&&t.getFullYear()===y;
+    const evs=(events[d]||[]).slice(0,3).map(s=>`<div class="chip" onclick="openDetail('${s.uid}')">${s.domain?`<img src="https://www.google.com/s2/favicons?domain=${s.domain}&sz=32" alt="">`:""}<span>${money(s.price,0)}</span></div>`).join("");
+    const more=(events[d]||[]).length>3?`<div class="chip">+${events[d].length-3}</div>`:"";
+    cells+=`<div class="day ${isToday?"today":""}"><span class="n">${d}</span>${evs}${more}</div>`;
+  }
+  // week totals
+  const weeks={};Object.entries(events).forEach(([d,list])=>{const w=Math.floor((+d+startDow-1)/7);weeks[w]=(weeks[w]||0)+list.reduce((a,s)=>a+s.price,0)});
+  const monthTotal=Object.values(events).flat().reduce((a,s)=>a+s.price,0);
+  return `<div class="cal-head">
+      <button class="icon-btn" onclick="calNav(-1)">←</button><h3>${monthName} · <span class="money">${money(monthTotal,0)}</span></h3><button class="icon-btn" onclick="calNav(1)">→</button>
+    </div>
+    <div class="cal">${cells}</div>
+    <div class="week-totals">${Object.entries(weeks).sort((a,b)=>a[0]-b[0]).map(([w,amt])=>`<div class="week-row"><span>Week ${+w+1}</span><b class="money">${money(amt)}</b></div>`).join("")}</div>
+    <div class="btn-row" style="margin-top:16px"><button class="btn ghost" onclick="downloadICS()">📅 Add renewals to my calendar (.ics)</button></div>`;
+}
+function calNav(dir){state.month+=dir; if(state.month<0){state.month=11;state.year--} if(state.month>11){state.month=0;state.year++} render()}
+
+/* ================= ADD FLOW ================= */
+let addSel=null;
+function openAdd(){
+  if(activeSubs().length>=FREE_LIMIT && !store.flags.pro){openPaywall();return}
+  addSel=null;
+  $("#modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad">
+      <h2>Add a subscription</h2>
+      <div class="search-wrap"><input id="q" placeholder="Search Netflix, Spotify, your gym…" autocomplete="off" oninput="searchServices(this.value)"></div>
+      <div class="results" id="results"></div>
+    </div></div></div>`;
+  searchServices("");
+  setTimeout(()=>$("#q").focus(),50);
+}
+function searchServices(q){
+  q=(q||"").trim().toLowerCase();
+  let list;
+  if(!q){ list=SERVICES.filter(s=>POPULAR_IDS.includes(s.id)).slice(0,10); if(list.length<8) list=SERVICES.slice(0,10); }
+  else{ list=SERVICES.filter(s=> s.name.toLowerCase().includes(q) || (s.aliases||[]).some(a=>a.includes(q)) || (CATS[s.category]?.label.toLowerCase().includes(q)) ).slice(0,12); }
+  const custom=`<button class="result" onclick="pickService(null,'${escAttr(q)}')"><div class="logo"><span>＋</span></div><div><div class="rname">${q?`Add “${esc(q)}”`:"Add something custom"}</div><div class="rcat">Anything recurring: rent, insurance, a box of socks</div></div></button>`;
+  $("#results").innerHTML=list.map(s=>{const p=s.plans[s.defaultPlan||0];
+    return `<button class="result" onclick="pickService('${s.id}')">${logoHTML(s)}<div><div class="rname">${esc(s.name)}</div><div class="rcat">${CATS[s.category].label}</div></div><div class="rprice money">${p.price?money(p.price)+"/"+(p.cycle==="yearly"?"yr":"mo"):"varies"}</div></button>`}).join("")+custom;
+}
+function pickService(id,customName){
+  const svc=id?SERVICES.find(s=>s.id===id):null;
+  addSel={svc,customName:customName||""};
+  renderAddForm();
+}
+function renderAddForm(editSub){
+  const svc=addSel?.svc;
+  const s=editSub||{};
+  const name=s.name||svc?.name||addSel?.customName||"";
+  const plans=svc?.plans||[];
+  const defIdx=svc? (svc.defaultPlan||0) : -1;
+  const selPlan= s.planName? plans.findIndex(p=>p.name===s.planName) : defIdx;
+  const price= s.price!=null? s.price : (plans[defIdx]?.price ?? "");
+  const cycle= s.cycle || plans[defIdx]?.cycle || "monthly";
+  const cat= s.category || svc?.category || "other";
+  const next= s.nextDate || iso(addCycle(today(),"monthly")<addCycle(today(),cycle)?addCycle(today(),cycle):addCycle(today(),cycle)) ;
+  const isEdit=!!editSub;
+  $("#modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad">
+      <div class="detail-head">${logoHTML({name,domain:s.domain??svc?.domain,category:cat})}<h2>${isEdit?"Edit":esc(name)||"New subscription"}</h2></div>
+      ${plans.length>1&&!isEdit?`<div class="plan-pick">${plans.map((p,i)=>`<button class="plan-opt ${i===selPlan?"on":""}" onclick="setPlan(${i})"><span>${esc(p.name)}</span><b class="money">${p.price?money(p.price)+" / "+(p.cycle==="yearly"?"yr":"mo"):"varies"}</b></button>`).join("")}</div>`:""}
+      ${isEdit||!svc?`<div class="f-group"><label class="f-label">Name</label><input class="f-input" id="f-name" value="${escAttr(name)}"></div>`:""}
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Price (USD)</label><input class="f-input money" id="f-price" type="number" step="0.01" min="0" inputmode="decimal" value="${price!==""?(+price).toFixed(2):""}" placeholder="9.99"></div>
+        <div class="f-group"><label class="f-label">Billing</label><select class="f-select" id="f-cycle">
+          <option value="monthly" ${cycle==="monthly"?"selected":""}>Monthly</option>
+          <option value="yearly" ${cycle==="yearly"?"selected":""}>Yearly</option>
+          <option value="weekly" ${cycle==="weekly"?"selected":""}>Weekly</option></select></div>
+      </div>
+      <div class="f-row">
+        <div class="f-group"><label class="f-label">Next payment</label><input class="f-input" id="f-next" type="date" value="${s.nextDate||iso(addCycle(today(),cycle))}"></div>
+        <div class="f-group"><label class="f-label">Category</label><select class="f-select" id="f-cat">${Object.entries(CATS).map(([k,v])=>`<option value="${k}" ${k===cat?"selected":""}>${v.label}</option>`).join("")}</select></div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="f-trial" ${s.trial?"checked":""}> This is a free trial (remind me loudly before it ends)</label>
+      <div class="btn-row"><button class="btn primary" onclick="saveSub(${isEdit?`'${s.uid}'`:"null"})">${isEdit?"Save changes":"Add it"}</button></div>
+    </div></div></div>`;
+  window.setPlan=(i)=>{ addSel.planIdx=i; const p=plans[i]; $("#f-price").value=p.price?p.price.toFixed(2):""; $("#f-cycle").value=p.cycle; $("#f-next").value=iso(addCycle(today(),p.cycle));
+    document.querySelectorAll(".plan-opt").forEach((el,j)=>el.classList.toggle("on",j===i)); };
+}
+function saveSub(uid){
+  const subs=store.subs;
+  const svc=addSel?.svc;
+  const planIdx= addSel?.planIdx ?? svc?.defaultPlan ?? -1;
+  const nameEl=$("#f-name");
+  const price=parseFloat($("#f-price").value);
+  if(isNaN(price)){toast("Add a price. Best guess is fine");$("#f-price").focus();return}
+  const base= uid? subs.find(s=>s.uid===uid) : {
+    uid:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    serviceId:svc?.id||null, domain:svc?.domain||"", status:"active", addedAt:iso(today())
+  };
+  base.name= nameEl? nameEl.value.trim()||"Untitled" : (svc?.name||"Untitled");
+  base.planName= svc && planIdx>=0 && !uid ? svc.plans[planIdx].name : base.planName;
+  base.price=price;
+  base.cycle=$("#f-cycle").value;
+  base.nextDate=$("#f-next").value||iso(addCycle(today(),base.cycle));
+  base.category=$("#f-cat").value;
+  base.trial=$("#f-trial").checked;
+  if(!uid) subs.push(base);
+  store.subs=subs;
+  closeModal(); render();
+  toast(uid?"Saved":`${base.name} added. Now ${money(totalMonthly(),0)}/mo total`);
+  maybeAskNotify();
+}
+
+/* ================= DETAIL ================= */
+function openDetail(uid){
+  const s=store.subs.find(x=>x.uid===uid); if(!s)return;
+  const svc=SERVICES.find(x=>x.id===s.serviceId);
+  const nr=nextRenewal(s); const cat=CATS[s.category]||CATS.other;
+  const cancelInfo= svc?.cancelUrl || svc?.cancelSteps?.length;
+  $("#modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad">
+      <div class="detail-head">${logoHTML(s)}<div><h2>${esc(s.name)}</h2><div style="font-size:13px;color:var(--ink-3)">${esc(s.planName||cat.label)}${s.trial?" · free trial":""}</div></div></div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">
+        <div><div class="f-label">Cost</div><div class="money" style="font-family:var(--serif);font-size:26px">${money(s.price)}<small style="font-family:var(--sans);font-size:12px;color:var(--ink-3)"> /${s.cycle==="yearly"?"yr":s.cycle==="weekly"?"wk":"mo"}</small></div></div>
+        <div><div class="f-label">Per year</div><div class="money" style="font-family:var(--serif);font-size:26px">${money(monthly(s)*12,0)}</div></div>
+        ${s.status==="active"&&nr?`<div><div class="f-label">Next payment</div><div style="font-family:var(--serif);font-size:26px">${fmtDate(nr)}</div></div>`:""}
+        ${s.status!=="active"?`<div><div class="f-label">Saved since ${s.status}</div><div class="money" style="font-family:var(--serif);font-size:26px;color:var(--green)">${money(savedSince(s),0)}</div></div>`:""}
+      </div>
+      ${s.status==="active"?`
+      <div class="btn-row">
+        <button class="btn ghost" onclick="editSub('${s.uid}')">Edit</button>
+        <button class="btn ghost" onclick="pauseSub('${s.uid}')">Pause</button>
+        <button class="btn green" onclick="markCancelled('${s.uid}')">I cancelled it</button>
+      </div>
+      <div class="cancel-box">
+        <h4>Want out?</h4>
+        ${svc?.cancelSteps?.length?`<ol>${svc.cancelSteps.map(st=>`<li>${esc(st)}</li>`).join("")}</ol>`:`<div style="font-size:14px;color:var(--ink-2)">Check the service's account or billing settings. Cancellation is almost always under "Manage subscription."</div>`}
+        ${svc?.cancelUrl?`<a href="${svc.cancelUrl}" target="_blank" rel="noopener">Open ${esc(s.name)}'s cancel page ↗</a>`:""}
+      </div>`:`
+      <div class="btn-row">
+        <button class="btn green" onclick="reactivateSub('${s.uid}')">Reactivate</button>
+        <button class="btn ghost" onclick="editSub('${s.uid}')">Edit</button>
+      </div>`}
+      <button class="btn danger-ghost" onclick="deleteSub('${s.uid}')" style="margin-top:8px;width:100%">Delete from Subtotal</button>
+    </div></div></div>`;
+}
+function editSub(uid){const s=store.subs.find(x=>x.uid===uid);addSel={svc:SERVICES.find(x=>x.id===s.serviceId)||null};renderAddForm(s)}
+function pauseSub(uid){mutate(uid,s=>{s.status="paused";s.stoppedAt=iso(today())});toast("Paused. We'll keep score of what you save")}
+function markCancelled(uid){mutate(uid,s=>{s.status="cancelled";s.stoppedAt=iso(today())});toast("Nice. Watch the savings add up 🌱")}
+function reactivateSub(uid){mutate(uid,s=>{s.status="active";delete s.stoppedAt;s.nextDate=iso(addCycle(today(),s.cycle))});toast("Back on")}
+function deleteSub(uid){ if(!confirm("Delete this subscription from Subtotal?"))return; store.subs=store.subs.filter(s=>s.uid!==uid); closeModal(); render(); toast("Deleted") }
+function mutate(uid,fn){const subs=store.subs;const s=subs.find(x=>x.uid===uid);if(!s)return;fn(s);store.subs=subs;closeModal();render()}
+function closeModal(){$("#modal").innerHTML=""}
+
+/* ================= SETTINGS / BACKUP ================= */
+function openSettings(){
+  const n=store.subs.length;
+  $("#modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad">
+      <h2>Settings & backup</h2>
+      <p style="font-size:14px;color:var(--ink-2);margin:10px 0 18px">Everything lives on this device. Export a backup so you can restore or move browsers. Takes two seconds.</p>
+      <div class="btn-row" style="flex-direction:column">
+        <button class="btn primary" onclick="exportJSON()">⬇︎ Download backup (${n} item${n===1?"":"s"})</button>
+        <button class="btn ghost" onclick="$('#file-import').click()">⬆︎ Restore from backup</button>
+        <button class="btn ghost" onclick="exportCSV()">Export spreadsheet (CSV)</button>
+        <button class="btn ghost" onclick="downloadICS()">Calendar file with all renewals (.ics)</button>
+        <button class="btn ghost" onclick="askNotify(true)">${Notification&&Notification.permission==="granted"?"✓ Browser reminders on":"Turn on browser reminders"}</button>
+        ${store.flags.pro?`<div style="text-align:center;font-size:13px;color:var(--green);font-weight:600;padding:6px">✓ Pro unlocked (beta)</div>`:`<button class="btn ghost" onclick="openPaywall()">Subtotal Pro</button>`}
+      </div>
+      <input type="file" id="file-import" class="hidden" accept=".json" onchange="importJSON(this.files[0])">
+      <p style="font-size:12px;color:var(--ink-3);margin-top:16px;text-align:center">Subtotal never sees your bank account and never will by default.<br>Start over: <button style="text-decoration:underline;color:var(--red)" onclick="resetAll()">erase everything</button></p>
+    </div></div></div>`;
+}
+function exportJSON(){const blob=new Blob([JSON.stringify({v:1,exported:iso(today()),subs:store.subs},null,2)],{type:"application/json"});dl(blob,"subtotal-backup-"+iso(today())+".json");toast("Backup downloaded")}
+function importJSON(file){ if(!file)return; const r=new FileReader(); r.onload=()=>{try{const data=JSON.parse(r.result); const subs=data.subs||data; if(!Array.isArray(subs))throw 0; store.subs=subs; store.flags={...store.flags,onboarded:true}; closeModal(); render(); toast(`Restored ${subs.length} subscriptions`)}catch(e){toast("That file doesn't look like a Subtotal backup")}}; r.readAsText(file)}
+function exportCSV(){const rows=[["Name","Plan","Price","Cycle","Monthly equivalent","Category","Status","Next payment"]];
+  store.subs.forEach(s=>rows.push([s.name,s.planName||"",s.price,s.cycle,monthly(s).toFixed(2),CATS[s.category]?.label||s.category,s.status,s.nextDate]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  dl(new Blob([csv],{type:"text/csv"}),"subtotal.csv")}
+function dl(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+function resetAll(){ if(!confirm("Erase all Subtotal data on this device?"))return; localStorage.removeItem("st_subs"); localStorage.removeItem("st_flags"); location.reload() }
+
+/* ---------- ICS ---------- */
+function downloadICS(){
+  const subs=activeSubs(); if(!subs.length){toast("Nothing to add yet");return}
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Subtotal//EN","X-WR-CALNAME:Subtotal renewals"];
+  subs.forEach(s=>{const nr=nextRenewal(s); if(!nr)return; const dt=iso(nr).replace(/-/g,"");
+    const freq=s.cycle==="yearly"?"YEARLY":s.cycle==="weekly"?"WEEKLY":"MONTHLY";
+    lines.push("BEGIN:VEVENT",`UID:${s.uid}@subtotal`,`DTSTART;VALUE=DATE:${dt}`,`RRULE:FREQ=${freq}`,
+      `SUMMARY:${s.name} renews: $${s.price.toFixed(2)}${s.trial?" (TRIAL ENDS)":""}`,
+      `DESCRIPTION:Tracked in Subtotal. Still using it?`,"BEGIN:VALARM","TRIGGER:-P2D","ACTION:DISPLAY",`DESCRIPTION:${s.name} renews in 2 days ($${s.price.toFixed(2)})`,"END:VALARM","END:VEVENT")});
+  lines.push("END:VCALENDAR");
+  dl(new Blob([lines.join("\r\n")],{type:"text/calendar"}),"subtotal-renewals.ics");
+  toast("Open the file to add reminders to your calendar");
+}
+
+/* ---------- notifications ---------- */
+function maybeAskNotify(){ if(store.flags.askedNotify||!("Notification"in window))return; if(activeSubs().length>=3){askNotify(false)} }
+function askNotify(force){ if(!("Notification"in window)){toast("This browser doesn't support notifications");return}
+  store.flags={...store.flags,askedNotify:true};
+  if(Notification.permission==="granted"){if(force)toast("Reminders are on. We'll nudge you before renewals");return}
+  Notification.requestPermission().then(p=>{ if(p==="granted")toast("Reminders on 🎉") });
+}
+function checkDueNotifications(){ if(!("Notification"in window)||Notification.permission!=="granted")return;
+  const flags=store.flags; const notified=flags.notified||{}; const todayKey=iso(today());
+  activeSubs().forEach(s=>{const nr=nextRenewal(s); if(!nr)return; const du=daysUntil(nr);
+    if(du>=0&&du<=2&&notified[s.uid]!==todayKey){ new Notification(`${s.name} ${s.trial?"trial ends":"renews"} ${du===0?"today":du===1?"tomorrow":"in 2 days"}`,{body:`$${s.price.toFixed(2)}. Still want it? Open Subtotal to review.`,icon:"icon.png"}); notified[s.uid]=todayKey }});
+  store.flags={...flags,notified};
+}
+
+/* ================= PAYWALL ================= */
+let pwSel="yearly";
+function openPaywall(){
+  pwSel="yearly";
+  $("#modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="sheet"><button class="x" onclick="closeModal()">✕</button><div class="sheet-pad" style="text-align:center">
+      <div class="pw-badge">Subtotal Pro</div>
+      <h2>Track everything.<br>Pay almost nothing.</h2>
+      <p style="font-size:14.5px;color:var(--ink-2);margin-top:10px">Free covers 5 subscriptions. The average person wastes <b>$322 a year</b> on forgotten ones. Pro pays for itself the first time it catches one.</p>
+      <ul class="pw-feats" style="text-align:left;max-width:330px;margin:16px auto">
+        <li>Unlimited subscriptions</li><li>Calendar sync & smart reminders</li><li>Spreadsheet export</li><li>Every future Pro feature, included</li>
+      </ul>
+      <div class="pw-plans">
+        <button class="pw-plan" onclick="pwPick('monthly',this)"><div><div class="t">Monthly</div><div class="d">Flexible. Cancel whenever.</div></div><div class="p money">$4.99<small>/mo</small></div></button>
+        <button class="pw-plan ${pwSel==='yearly'?'on':''}" onclick="pwPick('yearly',this)"><div><div class="t">Yearly <span style="font-size:10px;font-weight:800;letter-spacing:.07em;color:#fff;background:var(--green);border-radius:999px;padding:2px 8px;margin-left:4px;vertical-align:2px">BEST VALUE</span></div><div class="d">Just $2.50 a month, billed yearly. Save $30 a year.</div></div><div class="p money"><span style="text-decoration:line-through;color:var(--ink-3);font-size:15px;margin-right:6px;font-weight:400">$59.88</span>$29.99<small>/yr</small></div></button>
+        <button class="pw-plan" onclick="pwPick('lifetime',this)"><div><div class="t">Lifetime</div><div class="d">Pay once, use it forever. No renewals, no irony.</div></div><div class="p money">$79.99</div></button>
+      </div>
+      <button class="btn primary" id="pw-cta" onclick="pwCheckout()" style="margin-top:10px">Get Pro · $29.99/yr</button>
+      <button class="btn ghost" onclick="betaUnlock()" style="margin-top:8px">We're in beta, continue free for now</button>
+      <p class="pw-fine">No bank login. No data selling. No upsell nags after you pay.</p>
+    </div></div></div>`;
+}
+function pwPick(v,el){pwSel=v;document.querySelectorAll(".pw-plan").forEach(p=>p.classList.remove("on"));el.classList.add("on");
+  const cta=$("#pw-cta"); if(cta) cta.textContent = v==='monthly' ? 'Get Pro · $4.99/mo' : v==='lifetime' ? 'Get Lifetime · $79.99' : 'Get Pro · $29.99/yr';}
+function pwCheckout(){toast("Payments land soon. Enjoy Pro free during beta");betaUnlock()}
+function betaUnlock(){store.flags={...store.flags,pro:true};closeModal();render();toast("Pro unlocked for the beta. Add away.")}
+
+/* ================= ONBOARDING ================= */
+function renderOnboarding(app){
+  const step=state.obStep;
+  const dots=`<div class="step-dots">${[0,1,2].map(i=>`<i class="${i<=step?"on":""}"></i>`).join("")}</div>`;
+  if(step===0){
+    app.innerHTML=`<div class="ob">${dots}
+      <h1>Most people guess they spend <em>$86</em> a month on subscriptions.</h1>
+      <p class="lede">The real average is <b style="color:var(--ink)">$219</b>. Let's find your number. It takes about 60 seconds, and we never ask for a bank login.</p>
+      <p class="stat-cite">Source: C+R Research consumer study</p>
+      <div class="ob-cta"><button class="btn primary" onclick="obNext()">Find my number</button>
+      <button class="skip" onclick="finishOnboarding()">Skip, just show me the app</button></div>
+    </div>`;
+    return;
+  }
+  if(step===1){
+    const popular=POPULAR_IDS.map(id=>SERVICES.find(s=>s.id===id)).filter(Boolean).slice(0,24);
+    const pool= popular.length>=12? popular : SERVICES.slice(0,24);
+    const total=Object.values(state.obPicked).reduce((a,p)=>a+monthly(p),0);
+    app.innerHTML=`<div class="ob" style="text-align:center;padding-bottom:180px">${dots}
+      <h1 style="font-size:clamp(26px,5vw,36px)">Which of these do you have?</h1>
+      <p class="lede" style="margin-top:8px">Tap everything you pay for. Don't overthink prices. You can fix them later.</p>
+      <div class="pick-grid">${pool.map(s=>{const on=!!state.obPicked[s.id];const p=s.plans[s.defaultPlan||0];
+        return `<button class="pick ${on?"on":""}" onclick="obToggle('${s.id}')"><span class="tick">✓</span>${logoHTML(s)}<span class="pname">${esc(s.name)}</span><span class="pprice">${p.price?money(p.price,p.price>=10?0:undefined)+"/"+(p.cycle==="yearly"?"yr":"mo"):"varies"}</span></button>`}).join("")}</div>
+      <div class="ob-footer">
+        <div class="running">${Object.keys(state.obPicked).length?`So far: <b class="money">${money(total)}</b>/month`:"Tap what you pay for ↑"}</div>
+        <button class="btn primary" onclick="obFinishPicks()" ${Object.keys(state.obPicked).length?"":"disabled style='opacity:.4'"}>${Object.keys(state.obPicked).length?"Show me my total":"Pick at least one"}</button>
+        <button class="skip" onclick="finishOnboarding()">I'll add mine manually</button>
+      </div>
+    </div>`;
+    return;
+  }
+  // step 2: reveal
+  const picked=Object.values(state.obPicked);
+  const m=picked.reduce((a,p)=>a+monthly(p),0), y=m*12;
+  const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
+  app.innerHTML=`<div class="ob">${dots}
+    <p class="lede" style="margin:0">Your subscriptions cost about</p>
+    <div class="reveal-num money">${money(m)}</div>
+    <p class="reveal-sub">every month, or <b class="money" style="color:var(--ink)">${money(y,0)}</b> a year</p>
+    <div class="reveal-compare">
+      <div>☕️ That's <b>${Math.max(1,Math.round(y/6.5))} lattes</b> a year</div>
+      ${y>800?`<div>✈️ Or about <b>${Math.round(y/450)} round-trip flights</b></div>`:""}
+      <div>🌱 Invested instead, ~<b>${money(fv,0)}</b> after 30 years<span style="font-size:11px;color:var(--ink-3)"> (7% historical avg., not a guarantee)</span></div>
+    </div>
+    <div class="ob-cta">
+      <button class="btn primary" onclick="finishOnboarding()">Keep track of it all →</button>
+      <p style="font-size:12.5px;color:var(--ink-3)">Next: exact renewal dates so nothing sneaks up on you.</p>
+    </div>
+  </div>`;
+}
+function obNext(){state.obStep++;render()}
+function obToggle(id){ const s=SERVICES.find(x=>x.id===id); if(state.obPicked[id]){delete state.obPicked[id]} else { const p=s.plans[s.defaultPlan||0]; state.obPicked[id]={...p, name:s.name, serviceId:s.id, price:p.price, cycle:p.cycle} } render() }
+function obFinishPicks(){state.obStep=2;render()}
+function finishOnboarding(){
+  const subs=store.subs;
+  Object.entries(state.obPicked).forEach(([id,p])=>{ const svc=SERVICES.find(s=>s.id===id);
+    subs.push({uid:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+id.slice(0,3), serviceId:id, name:svc.name, domain:svc.domain, planName:svc.plans[svc.defaultPlan||0].name, price:p.price, cycle:p.cycle, category:svc.category, status:"active", trial:false, addedAt:iso(today()), nextDate:iso(addCycle(today(),p.cycle))});
+  });
+  store.subs=subs;
+  store.flags={...store.flags,onboarded:true,pro:store.flags.pro|| subs.filter(s=>s.status==="active").length<=FREE_LIMIT? store.flags.pro : store.flags.pro};
+  state.obPicked={};
+  render();
+  if(subs.length)toast("Tap any card to fix its price or renewal date");
+}
+
+/* ---------- utils ---------- */
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function escAttr(s){return esc(s).replace(/`/g,"")}
+
+/* ---------- boot ---------- */
+window.addEventListener("load",()=>{ if("serviceWorker"in navigator && location.protocol!=="file:"){navigator.serviceWorker.register("sw.js").catch(()=>{})} });
+render();
+checkDueNotifications();
+</script>
+</body>
+</html>
