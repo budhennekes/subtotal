@@ -1,7 +1,7 @@
 {
-  "name": "Subtotal",
+  "name": "Subtotal: Subscription Tracker",
   "short_name": "Subtotal",
-  "description": "See what your subscriptions really cost. No bank login.",
+  "description": "The simple subscription tracker. See what you really spend. No bank login, ever.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Subtotal · What your subscriptions really cost</title>
-<meta name="description" content="A simple, beautiful subscription tracker. No bank login. 60 seconds to set up.">
+<title>Subtotal · The simple subscription tracker</title>
+<meta name="description" content="The simple subscription tracker. See what you really spend, get nudged before renewals, cancel in one tap. No bank login, ever.">
 <meta name="theme-color" content="#FAF6EF">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.png" sizes="32x32">
@@ -324,7 +324,7 @@ function render(){
   if(!store.flags.onboarded){renderOnboarding(app);return}
   app.innerHTML=`
   <header class="top">
-    <div class="wordmark">sub<em>total</em></div>
+    <div class="wordmark"><em>sub</em>total<span style="display:block;font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">subscription tracker</span></div>
     <div class="top-actions">
       <button class="icon-btn" title="Calendar file" onclick="downloadICS()">📅</button>
       <button class="icon-btn" title="Settings & backup" onclick="openSettings()">⚙︎</button>
@@ -346,7 +346,7 @@ function render(){
   </div>
   <div id="view">${state.view==='dash'?dashHTML():calHTML()}</div>
   ${state.view==='dash'?insightsHTML():''}
-  <footer class="credit">Your data lives on this device. No bank login, no account, no tracking.<br><b>Subtotal</b>. See what your subscriptions really cost.</footer>
+  <footer class="credit">Your data lives on this device. No bank login, no account, no tracking.<br><b>Subtotal</b>, the simple subscription tracker.</footer>
   <button class="fab" title="Add subscription" onclick="openAdd()">+</button>
   <div id="modal"></div>`;
 }
@@ -673,11 +673,15 @@ function renderOnboarding(app){
   const dots=`<div class="step-dots">${[0,1,2].map(i=>`<i class="${i<=step?"on":""}"></i>`).join("")}</div>`;
   if(step===0){
     app.innerHTML=`<div class="ob">${dots}
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:14px"><em style="font-style:normal">sub</em>total · the simple subscription tracker</div>
       <h1>Most people guess they spend <em>$86</em> a month on subscriptions.</h1>
       <p class="lede">The real average is <b style="color:var(--ink)">$219</b>. Let's find your number. It takes about 60 seconds, and we never ask for a bank login.</p>
       <p class="stat-cite">Source: C+R Research consumer study</p>
       <div class="ob-cta"><button class="btn primary" onclick="obNext()">Find my number</button>
       <button class="skip" onclick="finishOnboarding()">Skip, just show me the app</button></div>
+      <div style="margin:44px auto 0;max-width:460px;padding-top:22px;border-top:1px solid var(--line)">
+        <p style="font-size:14.5px;color:var(--ink-2);line-height:1.6"><b style="color:var(--ink)">Not another budgeting app.</b> No bank login. No credit-score upsells. No 40-screen setup. One screen: everything you pay for, added up, with a nudge before each renewal.</p>
+      </div>
     </div>`;
     return;
   }
