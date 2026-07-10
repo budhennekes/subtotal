@@ -347,10 +347,9 @@ function render(){
       <button class="${state.view==='cal'?'on':''}" onclick="setView('cal')">Calendar</button>
     </div>
     ${state.view==='dash'?`<select class="sort" onchange="state.sort=this.value;render()">
-      <option value="due" ${state.sort==='due'?'selected':''}>Sort: next due</option>
-      <option value="price" ${state.sort==='price'?'selected':''}>Sort: price</option>
-      <option value="cat" ${state.sort==='cat'?'selected':''}>Group: category</option>
-      <option value="name" ${state.sort==='name'?'selected':''}>Sort: name</option>
+      <option value="due" ${state.sort==='due'?'selected':''}>Soonest first</option>
+      <option value="price" ${state.sort==='price'?'selected':''}>Priciest first</option>
+      <option value="cat" ${state.sort==='cat'?'selected':''}>By category</option>
     </select>`:''}
   </div>
   <div id="view">${state.view==='dash'?dashHTML():calHTML()}</div>
@@ -449,7 +448,7 @@ function insightsHTML(){
   const y=m*12;
   if(y>200){const comp= y>2000?`about a decent used-car payment, every month`: y>1000?`${Math.round(y/450)} round-trip domestic flights a year`:`${Math.round(y/6.5)} lattes a year`;
     out.push(`<div class="insight"><div class="ic">☕️</div><div>Your ${money(y,0)}/year in subscriptions is ${comp}.</div></div>`)}
-  return out.length?`<div class="insights">${out.join("")}</div>`:"";
+  return out.length?`<div class="insights">${out.slice(0,2).join("")}</div>`:"";
 }
 
 /* ---------- calendar view ---------- */
@@ -584,25 +583,27 @@ function openDetail(uid){
         ${s.status!=="active"?`<div><div class="f-label">Saved since ${s.status}</div><div class="money" style="font-family:var(--serif);font-size:26px;color:var(--green)">${money(savedSince(s),0)}</div></div>`:""}
       </div>
       ${s.status==="active"?`
-      <div class="btn-row">
-        <button class="btn ghost" onclick="editSub('${s.uid}')">Edit</button>
-        <button class="btn ghost" onclick="pauseSub('${s.uid}')">Pause</button>
-        <button class="btn green" onclick="markCancelled('${s.uid}')">I cancelled it</button>
-      </div>
       <div class="cancel-box">
         <h4>Want out?</h4>
         ${svc?.cancelSteps?.length?`<ol>${svc.cancelSteps.map(st=>`<li>${esc(st)}</li>`).join("")}</ol>`:`<div style="font-size:14px;color:var(--ink-2)">Check the service's account or billing settings. Cancellation is almost always under "Manage subscription."</div>`}
         ${svc?.cancelUrl?`<a href="${svc.cancelUrl}" target="_blank" rel="noopener">Open ${esc(s.name)}'s cancel page ↗</a>`:""}
-      </div>`:`
+      </div>
+      <div class="f-label" style="margin:18px 0 8px">Then update your tracking</div>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn ghost" onclick="editSub('${s.uid}')">Edit</button>
+        <button class="btn ghost" onclick="pauseSub('${s.uid}')">I paused it</button>
+        <button class="btn green" onclick="markCancelled('${s.uid}')">I cancelled it</button>
+      </div>
+      <p style="font-size:12px;color:var(--ink-3);margin-top:8px;text-align:center">These update Subtotal only. They don't change your real subscription.</p>`:`
       <div class="btn-row">
-        <button class="btn green" onclick="reactivateSub('${s.uid}')">Reactivate</button>
+        <button class="btn green" onclick="reactivateSub('${s.uid}')">I'm paying for it again</button>
         <button class="btn ghost" onclick="editSub('${s.uid}')">Edit</button>
       </div>`}
-      <button class="btn danger-ghost" onclick="deleteSub('${s.uid}')" style="margin-top:8px;width:100%">Delete from Subtotal</button>
+      <button class="btn danger-ghost" onclick="deleteSub('${s.uid}')" style="margin-top:8px;width:100%">Remove from Subtotal (added by mistake)</button>
     </div></div></div>`;
 }
 function editSub(uid){const s=store.subs.find(x=>x.uid===uid);addSel={svc:SERVICES.find(x=>x.id===s.serviceId)||null};renderAddForm(s)}
-function pauseSub(uid){mutate(uid,s=>{s.status="paused";s.stoppedAt=iso(today())});toast("Paused. We'll keep score of what you save")}
+function pauseSub(uid){mutate(uid,s=>{s.status="paused";s.stoppedAt=iso(today())});toast("Marked paused in Subtotal. We'll keep score of what you save")}
 function markCancelled(uid){mutate(uid,s=>{s.status="cancelled";s.stoppedAt=iso(today())});toast("Nice. Watch the savings add up 🌱")}
 function reactivateSub(uid){mutate(uid,s=>{s.status="active";delete s.stoppedAt;s.nextDate=iso(addCycle(today(),s.cycle))});toast("Back on")}
 function deleteSub(uid){ if(!confirm("Delete this subscription from Subtotal?"))return; store.subs=store.subs.filter(s=>s.uid!==uid); closeModal(); render(); toast("Deleted") }
