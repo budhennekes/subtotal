@@ -108,6 +108,15 @@ select.sort{border:1px solid var(--line);background:var(--card);border-radius:12
 .add-card{border:1.5px dashed var(--line);border-radius:var(--r);display:grid;place-items:center;min-height:132px;color:var(--ink-3);font-weight:600;font-size:14px;cursor:pointer;transition:.15s;background:transparent}
 .add-card:hover{color:var(--green);border-color:var(--green)}
 
+/* ---------- category groups ---------- */
+.cat-sec{margin-bottom:26px}
+.cat-sec .grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.cat-head{display:flex;align-items:baseline;gap:10px;margin:0 2px 12px}
+.cat-head h3{font-family:var(--serif);font-weight:600;font-size:19px;letter-spacing:-.01em}
+.cat-swatch{width:10px;height:10px;border-radius:4px;align-self:center;flex-shrink:0}
+.cat-tot{margin-left:auto;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cat-tot b{color:var(--ink);font-weight:600}
+
 /* ---------- insight cards ---------- */
 .insights{display:grid;gap:12px;margin-top:26px}
 .insight{display:flex;gap:14px;align-items:flex-start;background:var(--green-soft);border:1px solid transparent;border-radius:var(--r);padding:16px 18px}
@@ -340,7 +349,7 @@ function render(){
     ${state.view==='dash'?`<select class="sort" onchange="state.sort=this.value;render()">
       <option value="due" ${state.sort==='due'?'selected':''}>Sort: next due</option>
       <option value="price" ${state.sort==='price'?'selected':''}>Sort: price</option>
-      <option value="cat" ${state.sort==='cat'?'selected':''}>Sort: category</option>
+      <option value="cat" ${state.sort==='cat'?'selected':''}>Group: category</option>
       <option value="name" ${state.sort==='name'?'selected':''}>Sort: name</option>
     </select>`:''}
   </div>
@@ -383,11 +392,27 @@ function upcomingStripHTML(){
 function dashHTML(){
   const subs=[...store.subs];
   if(!subs.length)return `<div class="empty"><div class="eface">🍃</div><h3>Nothing here yet</h3><p>Add your first subscription. It takes ten seconds.</p></div>`;
+  if(state.sort==="cat") return catGroupsHTML(subs);
   const sorters={due:(a,b)=>{const da=nextRenewal(a),db=nextRenewal(b); if(!da&&!db)return 0; if(!da)return 1; if(!db)return -1; return da-db},
-    price:(a,b)=>monthly(b)-monthly(a), cat:(a,b)=>(a.category||"").localeCompare(b.category||""), name:(a,b)=>a.name.localeCompare(b.name)};
+    price:(a,b)=>monthly(b)-monthly(a), name:(a,b)=>a.name.localeCompare(b.name)};
   subs.sort((a,b)=>{ if(a.status!==b.status) return a.status==="active"?-1:1; return sorters[state.sort](a,b)});
   return `<div class="grid">${subs.map((s,i)=>cardHTML(s,i)).join("")}
     <button class="add-card" onclick="openAdd()">+ Add subscription</button></div>`;
+}
+function catGroupsHTML(subs){
+  const groups={};
+  subs.forEach(s=>{const c=CATS[s.category]?s.category:"other";(groups[c]=groups[c]||[]).push(s)});
+  const activeTotal=c=>groups[c].filter(x=>x.status==="active").reduce((n,x)=>n+monthly(x),0);
+  const order=Object.keys(groups).sort((a,b)=>activeTotal(b)-activeTotal(a));
+  const grand=totalMonthly();
+  return order.map(c=>{
+    const g=groups[c].sort((a,b)=>{ if(a.status!==b.status) return a.status==="active"?-1:1; return monthly(b)-monthly(a)});
+    const cat=CATS[c], tot=activeTotal(c), pct=grand>0?Math.round(tot/grand*100):0;
+    return `<section class="cat-sec">
+      <div class="cat-head"><span class="cat-swatch" style="background:${cat.color}"></span><h3>${cat.label}</h3><span class="cat-tot"><b class="money">${money(tot)}</b>/mo${pct>0?` · ${pct}%`:""}</span></div>
+      <div class="grid">${g.map((s,i)=>cardHTML(s,i)).join("")}</div>
+    </section>`;
+  }).join("")+`<div class="grid" style="margin-top:14px"><button class="add-card" onclick="openAdd()">+ Add subscription</button></div>`;
 }
 
 function cardHTML(s,i){
