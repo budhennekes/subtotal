@@ -22,6 +22,7 @@
   --shadow:0 1px 2px rgba(28,26,22,.05),0 8px 24px -12px rgba(28,26,22,.14);
   --shadow-lg:0 2px 4px rgba(28,26,22,.06),0 24px 60px -20px rgba(28,26,22,.28);
   --sans:"Schibsted Grotesk",-apple-system,sans-serif; --serif:"Fraunces",Georgia,serif;
+  --wash-a:rgba(14,107,79,.08); --wash-b:rgba(176,124,16,.06); --wash-c:rgba(75,107,138,.05);
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -30,12 +31,17 @@
     --amber:#D9A83E; --amber-soft:#362C15;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);
     --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 24px 60px -20px rgba(0,0,0,.7);
+    --wash-a:rgba(76,174,140,.10); --wash-b:rgba(217,168,62,.06); --wash-c:rgba(105,140,175,.07);
   }
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100dvh;line-height:1.45;
-  background-image:radial-gradient(ellipse 80% 50% at 50% -10%,var(--paper-2),transparent)}
+  background-image:
+    radial-gradient(1000px 520px at 88% -12%,var(--wash-a),transparent 68%),
+    radial-gradient(880px 560px at -14% 22%,var(--wash-b),transparent 70%),
+    radial-gradient(760px 500px at 55% 118%,var(--wash-c),transparent 72%);
+  background-attachment:fixed}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 input,select{font:inherit;color:inherit}
 .money{font-variant-numeric:tabular-nums}
@@ -183,7 +189,14 @@ select.sort{border:1px solid var(--line);background:var(--card);border-radius:12
 .cancel-box a{color:var(--green);font-weight:600;font-size:14px;display:inline-block;margin-top:10px}
 
 /* ---------- onboarding ---------- */
-.ob{max-width:640px;margin:0 auto;padding:40px 22px 140px;text-align:center;animation:rise .5s both}
+.ob{max-width:640px;margin:0 auto;padding:40px 22px 140px;text-align:center;animation:rise .5s both;position:relative}
+.ob-back{position:absolute;top:32px;left:10px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--ink-2);border:1px solid var(--line);background:var(--card);font-size:17px;transition:.15s;z-index:5}
+.ob-back:hover{color:var(--ink);transform:translateX(-2px);box-shadow:var(--shadow)}
+.ob-search{width:100%;max-width:420px;margin:20px auto 0;display:block;padding:13px 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-size:15px;outline:none;text-align:center;transition:.15s;box-shadow:var(--shadow)}
+.ob-search:focus{border-color:var(--green);text-align:left}
+.pick .pin{width:74px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--line);background:var(--card);font-size:12px;text-align:center;outline:none}
+.pick .pin:focus{border-color:var(--green)}
+.pick.custom .logo{background:var(--green-soft)}
 .ob .step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:36px}
 .ob .step-dots i{width:22px;height:4px;border-radius:2px;background:var(--line)}
 .ob .step-dots i.on{background:var(--green)}
@@ -669,27 +682,27 @@ function renderOnboarding(app){
     return;
   }
   if(step===1){
-    const popular=POPULAR_IDS.map(id=>SERVICES.find(s=>s.id===id)).filter(Boolean).slice(0,24);
-    const pool= popular.length>=12? popular : SERVICES.slice(0,24);
-    const total=Object.values(state.obPicked).reduce((a,p)=>a+monthly(p),0);
-    app.innerHTML=`<div class="ob" style="text-align:center;padding-bottom:180px">${dots}
+    app.innerHTML=`<div class="ob" style="text-align:center;padding-bottom:180px">
+      <button class="ob-back" onclick="obBack()" title="Back">←</button>${dots}
       <h1 style="font-size:clamp(26px,5vw,36px)">Which of these do you have?</h1>
       <p class="lede" style="margin-top:8px">Tap everything you pay for. Don't overthink prices. You can fix them later.</p>
-      <div class="pick-grid">${pool.map(s=>{const on=!!state.obPicked[s.id];const p=s.plans[s.defaultPlan||0];
-        return `<button class="pick ${on?"on":""}" onclick="obToggle('${s.id}')"><span class="tick">✓</span>${logoHTML(s)}<span class="pname">${esc(s.name)}</span><span class="pprice">${p.price?money(p.price,p.price>=10?0:undefined)+"/"+(p.cycle==="yearly"?"yr":"mo"):"varies"}</span></button>`}).join("")}</div>
+      <input class="ob-search" id="ob-q" placeholder="Search anything: Netflix, gym, car insurance…" autocomplete="off" value="${escAttr(state.obQuery||"")}" oninput="obSearch(this.value)">
+      <div class="pick-grid" id="ob-grid">${obGridHTML()}</div>
       <div class="ob-footer">
-        <div class="running">${Object.keys(state.obPicked).length?`So far: <b class="money">${money(total)}</b>/month`:"Tap what you pay for ↑"}</div>
-        <button class="btn primary" onclick="obFinishPicks()" ${Object.keys(state.obPicked).length?"":"disabled style='opacity:.4'"}>${Object.keys(state.obPicked).length?"Show me my total":"Pick at least one"}</button>
+        <div class="running" id="ob-running"></div>
+        <button class="btn primary" id="ob-cta" onclick="obFinishPicks()"></button>
         <button class="skip" onclick="finishOnboarding()">I'll add mine manually</button>
       </div>
     </div>`;
+    obFooter();
     return;
   }
   // step 2: reveal
   const picked=Object.values(state.obPicked);
   const m=picked.reduce((a,p)=>a+monthly(p),0), y=m*12;
   const fv=m*((Math.pow(1+0.07/12,360)-1)/(0.07/12));
-  app.innerHTML=`<div class="ob">${dots}
+  app.innerHTML=`<div class="ob">
+    <button class="ob-back" onclick="obBack()" title="Edit my picks">←</button>${dots}
     <p class="lede" style="margin:0">Your subscriptions cost about</p>
     <div class="reveal-num money">${money(m)}</div>
     <p class="reveal-sub">every month, or <b class="money" style="color:var(--ink)">${money(y,0)}</b> a year</p>
@@ -705,16 +718,56 @@ function renderOnboarding(app){
   </div>`;
 }
 function obNext(){state.obStep++;render()}
-function obToggle(id){ const s=SERVICES.find(x=>x.id===id); if(state.obPicked[id]){delete state.obPicked[id]} else { const p=s.plans[s.defaultPlan||0]; state.obPicked[id]={...p, name:s.name, serviceId:s.id, price:p.price, cycle:p.cycle} } render() }
+function obBack(){state.obStep=Math.max(0,state.obStep-1);render()}
+function obPool(){
+  const q=(state.obQuery||"").trim().toLowerCase();
+  if(!q){ const popular=POPULAR_IDS.map(id=>SERVICES.find(s=>s.id===id)).filter(Boolean).slice(0,24); return popular.length>=12?popular:SERVICES.slice(0,24); }
+  return SERVICES.filter(s=> s.name.toLowerCase().includes(q) || (s.aliases||[]).some(a=>a.includes(q)) || (CATS[s.category]?.label.toLowerCase().includes(q)) ).slice(0,18);
+}
+function obGridHTML(){
+  const q=(state.obQuery||"").trim();
+  const customs=Object.entries(state.obPicked).filter(([k])=>k.startsWith("custom:")).map(([k,p])=>
+    `<div class="pick on custom" onclick="obRemoveCustom('${escAttr(k)}')" title="Tap to remove"><span class="tick">✓</span><div class="logo"><span style="color:var(--green)">${esc((p.name||"?")[0].toUpperCase())}</span></div><span class="pname">${esc(p.name)}</span><input class="pin money" type="number" step="0.01" min="0" inputmode="decimal" placeholder="$/mo" value="${p.price||""}" oninput="obSetCustomPrice('${escAttr(k)}',this.value)" onclick="event.stopPropagation()"></div>`).join("");
+  const tiles=obPool().map(s=>{const on=!!state.obPicked[s.id];const p=s.plans[s.defaultPlan||0];
+    return `<button class="pick ${on?"on":""}" onclick="obToggle('${s.id}')"><span class="tick">✓</span>${logoHTML(s)}<span class="pname">${esc(s.name)}</span><span class="pprice">${p.price?money(p.price,p.price>=10?0:undefined)+"/"+(p.cycle==="yearly"?"yr":"mo"):"varies"}</span></button>`}).join("");
+  const addTile= q? `<button class="pick" onclick="obAddCustom()"><div class="logo"><span style="color:var(--green)">＋</span></div><span class="pname">Add "${esc(q)}"</span><span class="pprice">anything recurring</span></button>` : "";
+  return customs+tiles+addTile;
+}
+function obRefresh(){ const g=$("#ob-grid"); if(g)g.innerHTML=obGridHTML(); obFooter(); }
+function obFooter(){
+  const n=Object.keys(state.obPicked).length;
+  const total=Object.values(state.obPicked).reduce((a,p)=>a+monthly(p),0);
+  const r=$("#ob-running"), b=$("#ob-cta"); if(!r||!b)return;
+  r.innerHTML= n? `So far: <b class="money">${money(total)}</b>/month` : "Tap what you pay for ↑";
+  b.disabled=!n; b.style.opacity=n?"":".4"; b.textContent= n? "Show me my total" : "Pick at least one";
+}
+function obSearch(v){ state.obQuery=v; const g=$("#ob-grid"); if(g)g.innerHTML=obGridHTML(); }
+function obAddCustom(){
+  const q=(state.obQuery||"").trim(); if(!q)return;
+  const k="custom:"+q.toLowerCase();
+  if(!state.obPicked[k]) state.obPicked[k]={custom:true, name:q, price:0, cycle:"monthly"};
+  state.obQuery="";
+  const inp=$("#ob-q"); if(inp)inp.value="";
+  obRefresh();
+  const pin=document.querySelector(`.pick.custom .pin`); if(pin)pin.focus();
+  toast(`Added ${q}. Type its monthly cost right on the tile`);
+}
+function obRemoveCustom(k){ delete state.obPicked[k]; obRefresh(); }
+function obSetCustomPrice(k,v){ if(state.obPicked[k]){ state.obPicked[k].price=parseFloat(v)||0; obFooter(); } }
+function obToggle(id){ const s=SERVICES.find(x=>x.id===id); if(state.obPicked[id]){delete state.obPicked[id]} else { const p=s.plans[s.defaultPlan||0]; state.obPicked[id]={...p, name:s.name, serviceId:s.id, price:p.price||0, cycle:p.cycle} } obRefresh() }
 function obFinishPicks(){state.obStep=2;render()}
 function finishOnboarding(){
   const subs=store.subs;
-  Object.entries(state.obPicked).forEach(([id,p])=>{ const svc=SERVICES.find(s=>s.id===id);
-    subs.push({uid:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+id.slice(0,3), serviceId:id, name:svc.name, domain:svc.domain, planName:svc.plans[svc.defaultPlan||0].name, price:p.price, cycle:p.cycle, category:svc.category, status:"active", trial:false, addedAt:iso(today()), nextDate:iso(addCycle(today(),p.cycle))});
+  Object.entries(state.obPicked).forEach(([id,p])=>{
+    const svc=p.custom? null : SERVICES.find(s=>s.id===id);
+    subs.push({uid:"s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+id.replace(/[^a-z0-9]/g,"").slice(0,3),
+      serviceId:svc?svc.id:null, name:p.name||svc?.name||"Untitled", domain:svc?.domain||"",
+      planName:svc?svc.plans[svc.defaultPlan||0].name:"", price:p.price||0, cycle:p.cycle||"monthly",
+      category:svc?svc.category:"other", status:"active", trial:false, addedAt:iso(today()), nextDate:iso(addCycle(today(),p.cycle||"monthly"))});
   });
   store.subs=subs;
-  store.flags={...store.flags,onboarded:true,pro:store.flags.pro|| subs.filter(s=>s.status==="active").length<=FREE_LIMIT? store.flags.pro : store.flags.pro};
-  state.obPicked={};
+  store.flags={...store.flags,onboarded:true};
+  state.obPicked={}; state.obQuery="";
   render();
   if(subs.length)toast("Tap any card to fix its price or renewal date");
 }
@@ -724,6 +777,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function escAttr(s){return esc(s).replace(/`/g,"")}
 
 /* ---------- boot ---------- */
+window.addEventListener("keydown",e=>{ if(e.key==="Escape")closeModal() });
 window.addEventListener("load",()=>{ if("serviceWorker"in navigator && location.protocol!=="file:"){navigator.serviceWorker.register("sw.js").catch(()=>{})} });
 render();
 checkDueNotifications();
